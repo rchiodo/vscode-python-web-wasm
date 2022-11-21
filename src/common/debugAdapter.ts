@@ -301,10 +301,17 @@ export class DebugAdapter implements vscode.DebugAdapter {
 		return this._outputChain;
 	}
 
+	private _getNormalizedWorkspaceRoot(): string | undefined {
+		if (this._workspaceFolder?.uri.scheme === 'file') {
+			return this._workspaceFolder.uri.fsPath.toLowerCase().replace(/\\/g, '/');
+		}
+		return this._workspaceFolder?.uri.toString().toLowerCase();
+	}
+
 	private _translateToWorkspacePath(wasmPath: string) {
 		const normalized = wasmPath.replace(/\\/g, '/');
 		if (normalized.startsWith('/workspace/') && this._workspaceFolder) {
-			const root = this._workspaceFolder.uri.fsPath.replace(/\\/g, '/');
+			const root = this._getNormalizedWorkspaceRoot();
 			// Wasm path, translate to workspace path
 			return `${root}/${normalized.slice('/workspace/'.length)}`;
 		}
@@ -312,8 +319,8 @@ export class DebugAdapter implements vscode.DebugAdapter {
 	}
 
 	private _translateFromWorkspacePath(workspacePath: string) {
-		const normalized = workspacePath.replace(/\\/g, '/');
-		const root = this._workspaceFolder?.uri.fsPath.replace(/\\/g, '/');
+		const normalized = workspacePath.toLowerCase().replace(/\\/g, '/');
+		const root = this._getNormalizedWorkspaceRoot();
 		if (root && normalized.startsWith(root)) {
 			// workspace path, translate to workspace path
 			return `/workspace${normalized.slice(root.length)}`;
@@ -555,8 +562,8 @@ export class DebugAdapter implements vscode.DebugAdapter {
 		if (file.startsWith('/workspace')) {
 			return true;
 		}else if (this._workspaceFolder) {
-			const root = this._workspaceFolder.uri.fsPath.toLowerCase().replace(/\\/g, '/');
-			return file.toLowerCase().startsWith(root);
+			const root = this._getNormalizedWorkspaceRoot();
+			return root ? file.toLowerCase().startsWith(root) : true;
 		} else {
 			// Otherwise no workspace folder and just a loose file. Use the starting file
 			const root = this._cwd?.toLowerCase().replace(/\\/g, '/');
